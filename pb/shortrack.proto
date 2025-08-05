@@ -1,0 +1,88 @@
+syntax = "proto3";
+
+option go_package = "github.com/sapslaj/shortrack/pb";
+
+package shortrack;
+
+enum ResourceStatus {
+  RESOURCE_INVALID_STATUS = 0;
+  RESOURCE_ABSENT = 1;
+  RESOURCE_ACTIVE = 2;
+  RESOURCE_DEGRADED = 3;
+}
+
+message PoolInfo {
+  uint32 pool_id = 1;
+  ResourceStatus status = 2;
+  string pool_name = 3;
+  string iqn = 4;
+}
+
+message ListPoolsRequest {
+}
+
+message ListPoolsResponse {
+  repeated PoolInfo pools = 1;
+}
+
+message GetPoolRequest {
+  optional uint32 pool_id = 1;
+  optional string pool_name = 2;
+}
+
+message CreatePoolRequest {
+  optional uint32 pool_id = 1;
+  optional string pool_name = 2;
+}
+
+message DeletePoolRequest {
+  uint32 pool_id = 1;
+}
+
+message VolumeInfo {
+  uint32 pool_id = 1;
+  uint32 volume_id = 2;
+  ResourceStatus status = 3;
+  string volume_name = 4;
+  uint64 volume_size = 5;
+  string iqn = 6;
+  int64 lun = 7;
+}
+
+message ListVolumesRequest {
+  uint32 pool_id = 1;
+}
+
+message ListVolumesResponse {
+  repeated VolumeInfo volumes = 1;
+}
+
+message GetVolumeRequest {
+  uint32 pool_id = 1;
+  optional uint32 volume_id = 2;
+  optional string volume_name = 3;
+}
+
+message CreateVolumeRequest {
+  uint32 pool_id = 1;
+  optional uint32 volume_id = 2;
+  optional string volume_name = 3;
+  uint64 volume_size = 4;
+}
+
+message DeleteVolumeRequest {
+  uint32 pool_id = 1;
+  uint32 volume_id = 2;
+}
+
+service Sigma {
+  rpc ListPools(ListPoolsRequest) returns (ListPoolsResponse);
+  rpc GetPool(GetPoolRequest) returns (PoolInfo);
+  rpc CreatePool(CreatePoolRequest) returns (PoolInfo);
+  rpc DeletePool(DeletePoolRequest) returns (PoolInfo);
+
+  rpc ListVolumes(ListVolumesRequest) returns (ListVolumesResponse);
+  rpc GetVolume(GetVolumeRequest) returns (VolumeInfo);
+  rpc CreateVolume(CreateVolumeRequest) returns (VolumeInfo);
+  rpc DeleteVolume(DeleteVolumeRequest) returns (VolumeInfo);
+}

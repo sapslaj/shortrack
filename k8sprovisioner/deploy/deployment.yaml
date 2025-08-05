@@ -1,0 +1,28 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shortrack-k8s-provisioner
+  labels:
+    app: shortrack-k8s-provisioner
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: shortrack-k8s-provisioner
+  template:
+    metadata:
+      labels:
+        app: shortrack-k8s-provisioner
+    spec:
+      serviceAccountName: shortrack-k8s-provisioner
+      containers:
+        - name: shortrack-k8s-provisioner
+          image: ghcr.io/sapslaj/shortrack:latest
+          args:
+            - k8s-provisioner
+          # env:
+          #   - name: ENABLE_LEADER_ELECTION
+          #     value: "false"
