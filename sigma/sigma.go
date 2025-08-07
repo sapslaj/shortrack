@@ -3,6 +3,7 @@ package sigma
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -10,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -905,28 +907,44 @@ func SetConfig(path string, data string) error {
 	return nil
 }
 
-func TouchDiskFile(path string, size int64) (int64, error) {
+func TouchDiskFile(path string, size int64) (newSize int64, err error) {
+	newSize = 0
 	exists := true
+	existingSize := int64(0)
+
 	stat, err := os.Stat(path)
 	if err != nil && !os.IsNotExist(err) {
 		if os.IsNotExist(err) {
 			exists = false
 		}
-		return 0, err
-	}
-	if exists && stat != nil && stat.Size() >= size {
-		return stat.Size(), err
-	}
-	fd, err := os.Create(path)
-	if err != nil {
-		return size, err
-	}
-	err = fd.Close()
-	if err != nil {
-		return size, err
+		newSize = 0
 	}
 
-	return size, nil
+	if exists && stat != nil {
+		existingSize = stat.Size()
+	}
+	if existingSize >= size {
+		newSize = existingSize
+		return
+	}
+
+	fd, err := os.Create(path)
+	defer func() {
+		if fd != nil {
+			err = errors.Join(err, fd.Close())
+		}
+	}()
+	if err != nil {
+		return
+	}
+
+	err = syscall.Fallocate(int(fd.Fd()), 0, existingSize, size-existingSize)
+	if err != nil {
+		return
+	}
+	newSize = size
+
+	return
 }
 
 func DeleteDiskFile(path string) error {
