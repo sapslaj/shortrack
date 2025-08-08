@@ -39,7 +39,8 @@ type StatePool struct {
 }
 
 type State struct {
-	Pools map[uint16]StatePool `json:"pools"`
+	MaxLUNID uint16               `json:"max_lun_id"`
+	Pools    map[uint16]StatePool `json:"pools"`
 }
 
 type Server struct {
@@ -565,6 +566,9 @@ func (s *Server) CreateVolume(ctx context.Context, in *pb.CreateVolumeRequest) (
 
 	volume.Size = int64(in.VolumeSize)
 
+	s.StateMutex.Lock()
+	defer s.StateMutex.Unlock()
+
 	if in.VolumeId != nil {
 		volume.ID = uint16(*in.VolumeId)
 
@@ -588,16 +592,10 @@ func (s *Server) CreateVolume(ctx context.Context, in *pb.CreateVolumeRequest) (
 		for _, backstore := range backstores {
 			ids = append(ids, backstore.ID)
 		}
-		for i := range uint16(65535) {
-			if i == 0 {
-				continue
-			}
-			if slices.Contains(ids, i) {
-				continue
-			}
-			volume.ID = i
-			break
-		}
+		slices.Sort(ids)
+		// FIXME: uint16 overflow is undefined
+		volume.ID = max(s.State.MaxLUNID, ids[len(ids)-1]) + 1
+		// TODO: check to make sure the calculated volume ID doesn't conflict
 	}
 
 	if volume.ID == 0 {
@@ -607,8 +605,7 @@ func (s *Server) CreateVolume(ctx context.Context, in *pb.CreateVolumeRequest) (
 		)
 	}
 
-	s.StateMutex.Lock()
-	defer s.StateMutex.Unlock()
+	s.State.MaxLUNID = max(s.State.MaxLUNID, volume.ID)
 
 	poolID := uint16(in.PoolId)
 	pool, exists := s.State.Pools[poolID]
