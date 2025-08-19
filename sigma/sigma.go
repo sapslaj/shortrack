@@ -592,10 +592,14 @@ func (s *Server) CreateVolume(ctx context.Context, in *pb.CreateVolumeRequest) (
 		for _, backstore := range backstores {
 			ids = append(ids, backstore.ID)
 		}
-		slices.Sort(ids)
-		// FIXME: uint16 overflow is undefined
-		volume.ID = max(s.State.MaxLUNID, ids[len(ids)-1]) + 1
-		// TODO: check to make sure the calculated volume ID doesn't conflict
+		if len(ids) == 0 {
+			volume.ID = 1
+		} else {
+			slices.Sort(ids)
+			// FIXME: uint16 overflow is undefined
+			volume.ID = max(s.State.MaxLUNID, ids[len(ids)-1]) + 1
+			// TODO: check to make sure the calculated volume ID doesn't conflict
+		}
 	}
 
 	if volume.ID == 0 {
